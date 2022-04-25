@@ -1,6 +1,8 @@
 /**
  * This script takes events from a calendar (pressumably personal), and blocks the times
  * in which there are events in another one (pressumably professional)
+ *
+ * It was inspired by https://medium.com/@willroman/auto-block-time-on-your-work-google-calendar-for-your-personal-events-2a752ae91dab
  * 
  * Given the assumptions, there are some things configured by default:
  * - Skip weekends

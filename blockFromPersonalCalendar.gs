@@ -5,9 +5,14 @@
  * Given the assumptions, there are some things configured by default:
  * - Skip weekends
  * - Assume that "all day" events in the professional calendar mean OOO, so skip any events on those days
+ *
+ * Configuration:
+ * - Follow the instructions on https://support.google.com/calendar/answer/37082 to share your personal calendar with your work one
+ * - In your work account, create a new https://script.google.com/ project, inside it a script, and paste the contents of this file
+ * - Set a trigger for an hourly run of `blockFromPersonalCalendar` 
  */
 const CONFIG = {
-  calendarId: "marianosimone@gmail.com",
+  calendarId: "<your_personal_email>@gmail.com",
   daysToBlockInAdvance: 30,
   blockedEventTitle: '❌ Busy',
 }

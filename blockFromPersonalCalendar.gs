@@ -1,34 +1,29 @@
 /**
- * This script takes events from a calendar (pressumably personal), and blocks the times
+ * This script takes events from a list of calendars (pressumably personal), and blocks the times
  * in which there are events in another one (pressumably professional)
- * 
- * Adapated from https://github.com/marianosimone/google-app-scripts/blob/main/blockFromPersonalCalendar.gs.
- * My changes:
- * - handle multiple secondary calendars
- * - specify a color for the created events
  * 
  * This does not handle timezones at all, and just assumes that both calendars are on the same one
  * 
  * Configuration:
  * - Follow the instructions on https://support.google.com/calendar/answer/37082 to share your personal calendar with your work one
  * - In your work account, create a new https://script.google.com/ project, inside it a script, and paste the contents of this file
- * - Set a trigger for an hourly run of `blockFromPersonalCalendar` 
+ * - Set a trigger for an hourly run of `blockFromPersonalCalendars` 
  */
 const CONFIG = {
-  calendarIds: ["mattkharris@gmail.com", "aqv06aedps4ek5pggj5ug1gots@group.calendar.google.com"], // (personal) calendars from which to block time
+  calendarIds: ["mypersonalcalendar@gmail.com", "anothercalendarid@group.calendar.google.com"], // (personal) calendars from which to block time
   daysToBlockInAdvance: 30, // how many days to look ahead for
   blockedEventTitle: '❌ Busy', // the title to use in the created events in the (work) calendar
   skipWeekends: true, // if weekend events should be skipped or not
   skipAllDayEvents: true, // don't block all-day events from the personal calendar
-  workingHoursStartAt: 800, // any events ending before this time will be skipped. Use 0 if you don't care about working hours
-  workingHoursEndAt: 1900, // any events starting after this time will be skipped. Use 2300
+  workingHoursStartAt: 900, // any events ending before this time will be skipped. Use 0 if you don't care about working hours
+  workingHoursEndAt: 1800, // any events starting after this time will be skipped. Use 2300
   assumeAllDayEventsInWorkCalendarIsOOO: true, // if the work calendar has an all-day event, assume it's an OOO day, and don't block times
   skipFreeAvailabilityEvents: true, // Ignore events that are marked as "Free" in the secondary calendar
   color: CalendarApp.EventColor.YELLOW // set the color of any newly created events (see https://developers.google.com/apps-script/reference/calendar/event-color)
 }
 
 function blockFromPersonalCalendars() {
-  CONFIG.calendarIds.map((calendarId) => blockFromPersonalCalendar(calendarId));
+  CONFIG.calendarIds.forEach(blockFromPersonalCalendar);
 }
 
 function blockFromPersonalCalendar(calendarId) {
@@ -75,8 +70,6 @@ function blockFromPersonalCalendar(calendarId) {
       event.deleteEvent();
   });
 }
-
-// const COPIED_EVENT_TAG = 'blockFromPersonal.originalEventId';
 
 const eventTag = (calendarId) => {
   const calendarIdShort = calendarId.substring(0,5);

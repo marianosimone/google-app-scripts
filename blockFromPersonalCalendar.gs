@@ -28,15 +28,16 @@ function blockFromPersonalCalendars() {
 
 function blockFromPersonalCalendar(calendarId) {
   console.log(`📆 Processing secondary calendar ${calendarId}`);
-  
+  const copiedEventTag = `blockFromPersonal.${calendarId.split('@')[0]}.originalId`;
+
   const now = new Date();
   const endDate = new Date(Date.now() + 1000*60*60*24*CONFIG.daysToBlockInAdvance);
   
   const primaryCalendar = CalendarApp.getDefaultCalendar();
   
   const knownEvents = Object.assign({}, ...primaryCalendar.getEvents(now, endDate)
-      .filter((event) => event.getTag(eventTag(calendarId)))
-      .map((event) => ({[event.getTag(eventTag(calendarId))]: event})));
+      .filter((event) => event.getTag(copiedEventTag))
+      .map((event) => ({[event.getTag(copiedEventTag)]: event})));
 
   const knownOutOfOfficeDays = new Set(
     primaryCalendar.getEvents(now, endDate)
@@ -54,7 +55,7 @@ function blockFromPersonalCalendar(calendarId) {
     .forEach((event) => {
       console.log(`✅ Need to create "${event.getTitle()}" (${event.getStartTime()}) [${event.getId()}]`);
       const newEvent = primaryCalendar.createEvent(CONFIG.blockedEventTitle, event.getStartTime(), event.getEndTime());
-      newEvent.setTag(eventTag(calendarId), event.getId());
+      newEvent.setTag(copiedEventTag, event.getId());
       newEvent.setColor(CONFIG.color);
       newEvent.removeAllReminders(); // Avoid double notifications
     });
@@ -64,16 +65,11 @@ function blockFromPersonalCalendar(calendarId) {
       .map((event) => event.getId())
     );
   Object.values(knownEvents)
-    .filter((event) => !idsOnSecondaryCalendar.has(event.getTag(eventTag(calendarId))))
+    .filter((event) => !idsOnSecondaryCalendar.has(event.getTag(copiedEventTag)))
     .forEach((event) => {
       console.log(`Need to delete event on ${event.getStartTime()}, as it was removed from personal calendar`);
       event.deleteEvent();
   });
-}
-
-const eventTag = (calendarId) => {
-  const calendarIdShort = calendarId.substring(0,5);
-  return `blockFromPersonal.${calendarIdShort}.originalEventId`;
 }
 
 // Get the day in which an event is happening, without paying attention to timezones

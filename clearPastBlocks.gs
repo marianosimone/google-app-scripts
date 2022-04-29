@@ -12,7 +12,7 @@ function clearPastBlocks() {
   ];
 
   const calendar = CalendarApp.getDefaultCalendar();
-  
+
   calendar
     .getEvents(startDate, anHourAgo)
     .filter((event) => eventsToDelete.includes(event.getTitle()))

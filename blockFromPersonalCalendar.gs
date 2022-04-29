@@ -7,7 +7,9 @@
  * Configuration:
  * - Follow the instructions on https://support.google.com/calendar/answer/37082 to share your personal calendar with your work one
  * - In your work account, create a new https://script.google.com/ project, inside it a script, and paste the contents of this file
- * - Set a trigger for an hourly run of `blockFromPersonalCalendars` 
+ * - Set a trigger for an hourly run of `blockFromPersonalCalendars`
+ * 
+ * Developer reference: https://developers.google.com/apps-script/reference/calendar/
  */
 const CONFIG = {
   calendarIds: ["mypersonalcalendar@gmail.com", "anothercalendarid@group.calendar.google.com"], // (personal) calendars from which to block time
@@ -17,18 +19,18 @@ const CONFIG = {
   skipAllDayEvents: true, // don't block all-day events from the personal calendar
   workingHoursStartAt: 900, // any events ending before this time will be skipped. Use 0 if you don't care about working hours
   workingHoursEndAt: 1800, // any events starting after this time will be skipped. Use 2300
-  assumeAllDayEventsInWorkCalendarIsOOO: true, // if the work calendar has an all-day event, assume it's an OOO day, and don't block times
-  skipFreeAvailabilityEvents: true, // Ignore events that are marked as "Free" in the secondary calendar
+  assumeAllDayEventsInWorkCalendarIsOOO: true, // if the work calendar has an all-day event, assume it's an Out Of Office day, and don't block times
   color: CalendarApp.EventColor.YELLOW // set the color of any newly created events (see https://developers.google.com/apps-script/reference/calendar/event-color)
 }
 
-function blockFromPersonalCalendars() {
+const blockFromPersonalCalendars = () => {
   CONFIG.calendarIds.forEach(blockFromPersonalCalendar);
 }
 
-function blockFromPersonalCalendar(calendarId) {
+const blockFromPersonalCalendar = (calendarId) => {
   console.log(`📆 Processing secondary calendar ${calendarId}`);
-  const copiedEventTag = `blockFromPersonal.${calendarId.split('@')[0]}.originalId`;
+
+  const copiedEventTag = calendarEventTag(calendarId);
 
   const now = new Date();
   const endDate = new Date(Date.now() + 1000*60*60*24*CONFIG.daysToBlockInAdvance);
@@ -54,10 +56,10 @@ function blockFromPersonalCalendar(calendarId) {
     .filter(withLogging('an all day event', (event) => !CONFIG.skipAllDayEvents || !event.isAllDayEvent()))
     .forEach((event) => {
       console.log(`✅ Need to create "${event.getTitle()}" (${event.getStartTime()}) [${event.getId()}]`);
-      const newEvent = primaryCalendar.createEvent(CONFIG.blockedEventTitle, event.getStartTime(), event.getEndTime());
-      newEvent.setTag(copiedEventTag, event.getId());
-      newEvent.setColor(CONFIG.color);
-      newEvent.removeAllReminders(); // Avoid double notifications
+      primaryCalendar.createEvent(CONFIG.blockedEventTitle, event.getStartTime(), event.getEndTime())
+        .setTag(copiedEventTag, event.getId())
+        .setColor(CONFIG.color)
+        .removeAllReminders(); // Avoid double notifications
     });
 
   const idsOnSecondaryCalendar = new Set(
@@ -67,9 +69,16 @@ function blockFromPersonalCalendar(calendarId) {
   Object.values(knownEvents)
     .filter((event) => !idsOnSecondaryCalendar.has(event.getTag(copiedEventTag)))
     .forEach((event) => {
-      console.log(`Need to delete event on ${event.getStartTime()}, as it was removed from personal calendar`);
+      console.log(`🗑️ Need to delete event on ${event.getStartTime()}, as it was removed from personal calendar`);
       event.deleteEvent();
   });
+}
+
+const calendarEventTag  = (calendarId) => {
+    const calendarHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, calendarId));
+    // This is undocumented, but keys fail if they are longer than 44 chars :)
+    // The idea behind the SHA is to avoid collisions of the substring when you have similarly-named calendars
+    return `blockFromPersonal.${calendarHash.substring(0, 15)}.originalId`;
 }
 
 // Get the day in which an event is happening, without paying attention to timezones
@@ -99,4 +108,22 @@ const withLogging = (reason, fun) => {
     };
     return result;
   }
+}
+
+/**
+ * Utility function to remove all synced events. This is specially useful if you change configurations,
+ * or are doing some testing
+ */
+const cleanUpAllCalendars = () => {
+  const now = new Date();
+  const endDate = new Date(Date.now() + 1000*60*60*24*CONFIG.daysToBlockInAdvance);
+  const tagsOfEventsToDelete = new Set(CONFIG.calendarIds.map(calendarEventTag));
+
+  CalendarApp.getDefaultCalendar()
+    .getEvents(now, endDate)
+    .filter((event) => event.getAllTagKeys().some((tag) => tagsOfEventsToDelete.has(tag)))
+    .forEach((event) => {
+      console.log(`🗑️ Need to delete event on ${event.getStartTime()} as part of cleanup`);
+      event.deleteEvent()
+    });
 }

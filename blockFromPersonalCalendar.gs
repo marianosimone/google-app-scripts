@@ -14,7 +14,7 @@ const CONFIG = {
   daysToBlockInAdvance: 30, // how many days to look ahead for
   blockedEventTitle: '❌ Busy', // the title to use in the created events in the (work) calendar
   skipWeekends: true, // if weekend events should be skipped or not
-  skipAllDayEvents: true, // don't block all-day events from the personal calendar
+  skipFreeAvailabilityEvents: true, // don't block events that set visibility as "Free" in the personal calendar
   workingHoursStartAt: 900, // any events ending before this time will be skipped. Use 0 if you don't care about working hours
   workingHoursEndAt: 1800, // any events starting after this time will be skipped. Use 2300
   assumeAllDayEventsInWorkCalendarIsOOO: true, // if the work calendar has an all-day event, assume it's an Out Of Office day, and don't block times
@@ -65,6 +65,28 @@ const blockFromPersonalCalendars = () => {
     }
   }
 
+  /**
+   * Helper to merge results from using CalendarApp and the advanced API
+   * This is inefficient, but gets the best of both worlds: nice JS objects from
+   * CalendarApp, and the `transparency` property from the API. If CalendarApp starts
+   * exposing that in the future, there won't be a need to continue doing this.
+   */
+  const getRichEvents = (calendarId, start, end) => {
+    const richEvents = CalendarApp.getCalendarById(calendarId).getEvents(start, end)
+    const freeAvailabilityEvents = new Set(
+      Calendar.Events.list(calendarId, {timeMin: start.toISOString(), timeMax: end.toISOString()})
+        .items
+        .filter((event) => event.transparency === 'transparent')
+        .map((event) => event.iCalUID)
+    );
+    richEvents.forEach((event) => {
+      event.showFreeAvailability = freeAvailabilityEvents.has(event.getId());
+    })
+    return richEvents;
+  }
+
+  const eventTagValue = (event) => `${event.getId()}-${event.getStartTime().toISOString()}`
+
   CONFIG.calendarIds.forEach((calendarId) => {
     console.log(`📆 Processing secondary calendar ${calendarId}`);
 
@@ -86,27 +108,25 @@ const blockFromPersonalCalendars = () => {
         .map((event) => timeZoneAware.day(event))
     );
 
-    const secondaryCalendar = CalendarApp.getCalendarById(calendarId);
-    secondaryCalendar.getEvents(now, endDate)
-      .filter(withLogging('already known', (event) => !knownEvents.hasOwnProperty(event.getId())))
+    const eventsInSecondaryCalendar = getRichEvents(calendarId, now, endDate);
+
+    eventsInSecondaryCalendar
+      .filter(withLogging('already known', (event) => !knownEvents.hasOwnProperty(eventTagValue(event))))
       .filter(withLogging('outside of work hours', (event) => timeZoneAware.isOutOfWorkHours(event)))
       .filter(withLogging('during a weekend', (event) => !CONFIG.skipWeekends || timeZoneAware.isInAWeekend(event)))
       .filter(withLogging('during an OOO day', (event) => !CONFIG.assumeAllDayEventsInWorkCalendarIsOOO || !knownOutOfOfficeDays.has(timeZoneAware.day(event))))
-      .filter(withLogging('an all day event', (event) => !CONFIG.skipAllDayEvents || !event.isAllDayEvent()))
+      .filter(withLogging('marked as "Free" availabilty or is full day', (event) => !CONFIG.skipFreeAvailabilityEvents || !event.showFreeAvailability))
       .forEach((event) => {
         console.log(`✅ Need to create "${event.getTitle()}" (${event.getStartTime()}) [${event.getId()}]`);
         primaryCalendar.createEvent(CONFIG.blockedEventTitle, event.getStartTime(), event.getEndTime())
-          .setTag(copiedEventTag, event.getId())
+          .setTag(copiedEventTag, eventTagValue(event))
           .setColor(CONFIG.color)
           .removeAllReminders(); // Avoid double notifications
       });
 
-    const idsOnSecondaryCalendar = new Set(
-      secondaryCalendar.getEvents(now, endDate)
-        .map((event) => event.getId())
-      );
+    const tagsOnSecondaryCalendar = new Set(eventsInSecondaryCalendar.map(eventTagValue));
     Object.values(knownEvents)
-      .filter((event) => !idsOnSecondaryCalendar.has(event.getTag(copiedEventTag)))
+      .filter((event) => !tagsOnSecondaryCalendar.has(event.getTag(copiedEventTag)))
       .forEach((event) => {
         console.log(`🗑️ Need to delete event on ${event.getStartTime()}, as it was removed from personal calendar`);
         event.deleteEvent();

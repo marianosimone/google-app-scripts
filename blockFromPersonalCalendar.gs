@@ -5,6 +5,7 @@
  * Configuration:
  * - Follow the instructions on https://support.google.com/calendar/answer/37082 to share your personal calendar with your work one
  * - In your work account, create a new https://script.google.com/ project, inside it a script, and paste the contents of this file
+ * - Add "Calendar" to the *Services* section
  * - Set a trigger for an hourly run of `blockFromPersonalCalendars`
  *
  * Developer reference: https://developers.google.com/apps-script/reference/calendar/

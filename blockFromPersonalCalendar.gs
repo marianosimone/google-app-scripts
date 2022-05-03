@@ -73,16 +73,20 @@ const blockFromPersonalCalendars = () => {
    * exposing that in the future, there won't be a need to continue doing this.
    */
   const getRichEvents = (calendarId, start, end) => {
-    const richEvents = CalendarApp.getCalendarById(calendarId).getEvents(start, end)
+    const calendar = CalendarApp.getCalendarById(calendarId);
+    if (!calendar) {
+      return [];
+    }
+    const richEvents = calendar.getEvents(start, end);
     const freeAvailabilityEvents = new Set(
-      Calendar.Events.list(calendarId, {timeMin: start.toISOString(), timeMax: end.toISOString()})
-        .items
-        .filter((event) => event.transparency === 'transparent')
+      calendar
+        .getEvents(start, end)
+        .filter((event) => event.transparency === "transparent")
         .map((event) => event.iCalUID)
     );
     richEvents.forEach((event) => {
       event.showFreeAvailability = freeAvailabilityEvents.has(event.getId());
-    })
+    });
     return richEvents;
   }
 

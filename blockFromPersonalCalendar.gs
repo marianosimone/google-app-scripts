@@ -88,6 +88,14 @@ const blockFromPersonalCalendars = () => {
 
   const eventTagValue = (event) => `${event.getId()}-${event.getStartTime().toISOString()}`
 
+  const hasTimeChanges = (event, knownEvent) => {
+    const eventStartTime = event.getStartTime();
+    const knownEventStartTime = knownEvent.getStartTime();
+    const eventEndTime = event.getEndTime();
+    const knownEventEndTime = knownEvent.getEndTime();
+    return eventStartTime.valueOf() !== knownEventStartTime.valueOf() || eventEndTime.valueOf() !== knownEventEndTime.valueOf();
+  }
+
   CONFIG.calendarIds.forEach((calendarId) => {
     console.log(`📆 Processing secondary calendar ${calendarId}`);
 
@@ -112,13 +120,21 @@ const blockFromPersonalCalendars = () => {
     const eventsInSecondaryCalendar = getRichEvents(calendarId, now, endDate);
 
     eventsInSecondaryCalendar
-      .filter(withLogging('already known', (event) => !knownEvents.hasOwnProperty(eventTagValue(event))))
+      .filter(withLogging('already known', (event) => {
+        return !knownEvents.hasOwnProperty(eventTagValue(event)) || hasTimeChanges(event, knownEvents[eventTagValue(event)]);
+      }))
       .filter(withLogging('outside of work hours', (event) => timeZoneAware.isOutOfWorkHours(event)))
       .filter(withLogging('during a weekend', (event) => !CONFIG.skipWeekends || timeZoneAware.isInAWeekend(event)))
       .filter(withLogging('during an OOO day', (event) => !CONFIG.assumeAllDayEventsInWorkCalendarIsOOO || !knownOutOfOfficeDays.has(timeZoneAware.day(event))))
       .filter(withLogging('marked as "Free" availabilty or is full day', (event) => !CONFIG.skipFreeAvailabilityEvents || !event.showFreeAvailability))
       .forEach((event) => {
-        console.log(`✅ Need to create "${event.getTitle()}" (${event.getStartTime()}) [${event.getId()}]`);
+        const knownEvent = knownEvents[eventTagValue(event)];
+        if (knownEvent) {
+          console.log(`📝 Need to edit "${event.getTitle()}" (${event.getStartTime()}) [${event.getId()}]`);
+          knownEvent.deleteEvent();
+        } else {
+          console.log(`✅ Need to create "${event.getTitle()}" (${event.getStartTime()}) [${event.getId()}]`);
+        }
         primaryCalendar.createEvent(CONFIG.blockedEventTitle, event.getStartTime(), event.getEndTime())
           .setTag(copiedEventTag, eventTagValue(event))
           .setColor(CONFIG.color)

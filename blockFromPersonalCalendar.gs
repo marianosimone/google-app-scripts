@@ -45,7 +45,10 @@ const blockFromPersonalCalendars = () => {
   */
   const CalendarAwareTimeConverter = (calendar) => {
     const timeZone =  calendar.getTimeZone();
-    const offsetedDate = (date) => new Date(date.toLocaleString("en-US", {timeZone: timeZone}));
+    const offsetedDate = (date) => {
+      const localizedDate = date.toLocaleString("en-US", {timeZone: timeZone, hour12: false});
+      return new Date(localizedDate);
+    }
 
     return {
       isInAWeekend: (event) => {

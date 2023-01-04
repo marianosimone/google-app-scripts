@@ -37,7 +37,7 @@ const blockFromPersonalCalendars = () => {
   }
 
   /**
-  * Utility class to  make sure that, when comparing events in a personal calendar with the work's calenedar
+  * Utility class to  make sure that, when comparing events in a Personal calendar with the Work calendar
   * configuration, things like days and working hours are respected.
   *
   * The trick is that JS stores dates as UTC. Transforming dates to the work calendar's tz as a string, and then back

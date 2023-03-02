@@ -45,10 +45,12 @@ const blockFromPersonalCalendars = () => {
   */
   const CalendarAwareTimeConverter = (calendar) => {
     const timeZone =  calendar.getTimeZone();
-    const offsetedDate = (date) => {
-      const localizedDate = date.toLocaleString("en-US", {timeZone: timeZone, hour12: false});
-      return new Date(localizedDate);
-    }
+
+    // Load moment.js to be able to do date operations
+    eval(UrlFetchApp.fetch('https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js').getContentText());
+    eval(UrlFetchApp.fetch('https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.41/moment-timezone-with-data.min.js').getContentText());
+
+    const offsetedDate = (date) => moment(date).tz(timeZone).toDate();
 
     return {
       isInAWeekend: (event) => {

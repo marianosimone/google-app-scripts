@@ -116,7 +116,7 @@ const blockFromPersonalCalendars = () => {
 
     const knownOutOfOfficeDays = new Set(
       primaryCalendar.getEvents(now, endDate)
-        .filter((event) => event.isAllDayEvent())
+        .filter((event) => event.isAllDayEvent() && event.getMyStatus() === 'YES')
         .map((event) => timeZoneAware.day(event))
     );
 

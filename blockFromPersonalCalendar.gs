@@ -44,29 +44,29 @@ const blockFromPersonalCalendars = () => {
   * to a Date object, ensures that the absolute numbers for day/hour/minute maintained, which is what we use in the configuration.
   */
   const CalendarAwareTimeConverter = (calendar) => {
-    const timeZone =  calendar.getTimeZone();
 
-    // Load moment.js to be able to do date operations
+    // Load moment.js to be able to do date operations    
     eval(UrlFetchApp.fetch('https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js').getContentText());
     eval(UrlFetchApp.fetch('https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.41/moment-timezone-with-data.min.js').getContentText());
 
-    const offsetedDate = (date) => moment(date).tz(timeZone).toDate();
-
+    const timeZone =  calendar.getTimeZone();
+    const offsetedDate = (date) => moment(date).tz(timeZone);
+    
     return {
       isInAWeekend: (event) => {
-        const day = offsetedDate(event.getStartTime()).getDay();
+        const day = offsetedDate(event.getStartTime()).day();
         return day != 0 && day != 6;
       },
       isOutOfWorkHours: (event) => {
-        const startingDate = offsetedDate(new Date(event.getStartTime().getTime()))
-        const startingTime = startingDate.getHours() * 100 + startingDate.getMinutes();
-        const endingDate = offsetedDate(new Date(event.getEndTime().getTime()))
-        const endingTime = endingDate.getHours() * 100 + endingDate.getMinutes();
+        const startingDate = offsetedDate(event.getStartTime());
+        const startingTime = startingDate.hour() * 100 + startingDate.minute();
+        const endingDate = offsetedDate(event.getEndTime());
+        const endingTime = endingDate.hour() * 100 + endingDate.minute();
         return startingTime < CONFIG.workingHoursEndAt && endingTime > CONFIG.workingHoursStartAt;
       },
       day: (event) => {
         const startTime = offsetedDate(event.getStartTime());
-        return `${startTime.getFullYear()}${startTime.getMonth()}${startTime.getDate()}`;
+        return `${startTime.year()}${startTime.month()}${startTime.date()}`;
       }
     }
   }

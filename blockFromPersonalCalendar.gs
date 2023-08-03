@@ -45,7 +45,7 @@ const blockFromPersonalCalendars = () => {
   */
   const CalendarAwareTimeConverter = (calendar) => {
 
-    // Load moment.js to be able to do date operations    
+    // Load moment.js to be able to do date operations
     eval(UrlFetchApp.fetch('https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js').getContentText());
     eval(UrlFetchApp.fetch('https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.41/moment-timezone-with-data.min.js').getContentText());
 

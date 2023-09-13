@@ -78,7 +78,11 @@ const blockFromPersonalCalendars = () => {
    * exposing that in the future, there won't be a need to continue doing this.
    */
   const getRichEvents = (calendarId, start, end) => {
-    const richEvents = CalendarApp.getCalendarById(calendarId).getEvents(start, end)
+    const secondaryCalendar = CalendarApp.getCalendarById(calendarId);
+    if (!secondaryCalendar) {
+      throw `Couldn't load calendar for ${calendarId}. Check that ${CalendarApp.getName()} has access to it.`;
+    }
+    const richEvents = secondaryCalendar.getEvents(start, end);
     const freeAvailabilityEvents = new Set(
       Calendar.Events.list(calendarId, {timeMin: start.toISOString(), timeMax: end.toISOString()})
         .items
@@ -91,7 +95,7 @@ const blockFromPersonalCalendars = () => {
     return richEvents;
   }
 
-  const eventTagValue = (event) => `${event.getId()}-${event.getStartTime().toISOString()}`
+  const eventTagValue = (event) => `${event.getId()}-${event.getStartTime().toISOString()}`;
 
   const hasTimeChanges = (event, knownEvent) => {
     const eventStartTime = event.getStartTime();

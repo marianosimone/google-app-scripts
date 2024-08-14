@@ -16,6 +16,7 @@ const CONFIG = {
   blockedEventTitle: '❌ Busy', // the title to use in the created events in the (work) calendar
   skipWeekends: true, // if weekend events should be skipped or not
   skipFreeAvailabilityEvents: true, // don't block events that set visibility as "Free" in the personal calendar
+  skipNotAttending: true, // don't block events that are marked as not attending in the personal calendar
   workingHoursStartAt: 900, // any events ending before this time will be skipped. Use 0 if you don't care about working hours
   workingHoursEndAt: 1800, // any events starting after this time will be skipped. Use 2300
   assumeAllDayEventsInWorkCalendarIsOOO: true, // if the work calendar has an all-day event, assume it's an Out Of Office day, and don't block times
@@ -105,6 +106,10 @@ const blockFromPersonalCalendars = () => {
     return eventStartTime.valueOf() !== knownEventStartTime.valueOf() || eventEndTime.valueOf() !== knownEventEndTime.valueOf();
   }
 
+  const mightAttend = (event, calendarId) => {
+    return event.getGuestsStatus().find((s) => s.getEmail() === calendarId)?.getStatus() !== 'no'
+  }
+
   CONFIG.calendarIds.forEach((calendarId) => {
     console.log(`📆 Processing secondary calendar ${calendarId}`);
 
@@ -134,6 +139,7 @@ const blockFromPersonalCalendars = () => {
       }))
       .filter(withLogging('outside of work hours', (event) => timeZoneAware.isOutOfWorkHours(event)))
       .filter(withLogging('during a weekend', (event) => !CONFIG.skipWeekends || timeZoneAware.isInAWeekend(event)))
+      .filter(withLogging('an event you are not attending', (event) => !CONFIG.skipNotAttending || mightAttend(event, calendarId)))
       .filter(withLogging('during an OOO day', (event) => !CONFIG.assumeAllDayEventsInWorkCalendarIsOOO || !knownOutOfOfficeDays.has(timeZoneAware.day(event))))
       .filter(withLogging('marked as "Free" availabilty or is full day', (event) => !CONFIG.skipFreeAvailabilityEvents || !event.showFreeAvailability))
       .forEach((event) => {
@@ -157,6 +163,18 @@ const blockFromPersonalCalendars = () => {
         console.log(`🗑️ Need to delete event on ${event.getStartTime()}, as it was removed from personal calendar`);
         event.deleteEvent();
     });
+
+    if (CONFIG.skipNotAttending) {
+      eventsInSecondaryCalendar
+        .filter((event) => !mightAttend(event, calendarId))
+        .forEach((event) => {
+          const knownEvent = knownEvents[eventTagValue(event)];
+          if (knownEvent) {
+            console.log(`🗑️ Need to delete event on ${event.getStartTime()}, as it was marked as not attending`);
+            knownEvent.deleteEvent();
+          }
+        });
+    }
   });
 }
 

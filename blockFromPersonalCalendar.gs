@@ -13,7 +13,7 @@
 const CONFIG = {
   calendarIds: ["mypersonalcalendar@gmail.com", "anothercalendarid@group.calendar.google.com"], // (personal) calendars from which to block time
   daysToBlockInAdvance: 30, // how many days to look ahead for
-  blockedEventTitle: 'busy', // the title to use in the created events in the (work) calendar
+  blockedEventTitle: '❌ Busy', // the title to use in the created events in the (work) calendar
   skipWeekends: true, // if weekend events should be skipped or not
   skipFreeAvailabilityEvents: true, // don't block events that set visibility as "Free" in the personal calendar
   workingHoursStartAt: 900, // any events ending before this time will be skipped. Use 0 if you don't care about working hours
@@ -68,7 +68,7 @@ const blockFromPersonalCalendars = () => {
       day: (event) => {
         const startTime = offsetedDate(event.getStartTime());
         return `${startTime.year()}${startTime.month()}${startTime.date()}`;
-      },
+      }
     }
   }
 

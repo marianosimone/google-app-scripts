@@ -13,12 +13,13 @@
 const CONFIG = {
   calendarIds: ["mypersonalcalendar@gmail.com", "anothercalendarid@group.calendar.google.com"], // (personal) calendars from which to block time
   daysToBlockInAdvance: 30, // how many days to look ahead for
-  blockedEventTitle: '❌ Busy', // the title to use in the created events in the (work) calendar
+  blockedEventTitle: 'busy', // the title to use in the created events in the (work) calendar
   skipWeekends: true, // if weekend events should be skipped or not
   skipFreeAvailabilityEvents: true, // don't block events that set visibility as "Free" in the personal calendar
   workingHoursStartAt: 900, // any events ending before this time will be skipped. Use 0 if you don't care about working hours
   workingHoursEndAt: 1800, // any events starting after this time will be skipped. Use 2300
   assumeAllDayEventsInWorkCalendarIsOOO: true, // if the work calendar has an all-day event, assume it's an Out Of Office day, and don't block times
+  skipNotAttending : true, // if the personal calendar has events that are marked as not being attended, skip
   color: CalendarApp.EventColor.YELLOW // set the color of any newly created events (see https://developers.google.com/apps-script/reference/calendar/event-color)
 }
 
@@ -67,7 +68,7 @@ const blockFromPersonalCalendars = () => {
       day: (event) => {
         const startTime = offsetedDate(event.getStartTime());
         return `${startTime.year()}${startTime.month()}${startTime.date()}`;
-      }
+      },
     }
   }
 
@@ -134,6 +135,7 @@ const blockFromPersonalCalendars = () => {
       }))
       .filter(withLogging('outside of work hours', (event) => timeZoneAware.isOutOfWorkHours(event)))
       .filter(withLogging('during a weekend', (event) => !CONFIG.skipWeekends || timeZoneAware.isInAWeekend(event)))
+      .filter(withLogging('an event you are not attending', (event) => !CONFIG.skipNotAttending || event.getMyStatus().toString() !== 'NO'))
       .filter(withLogging('during an OOO day', (event) => !CONFIG.assumeAllDayEventsInWorkCalendarIsOOO || !knownOutOfOfficeDays.has(timeZoneAware.day(event))))
       .filter(withLogging('marked as "Free" availabilty or is full day', (event) => !CONFIG.skipFreeAvailabilityEvents || !event.showFreeAvailability))
       .forEach((event) => {
